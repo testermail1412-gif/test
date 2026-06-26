@@ -16,20 +16,17 @@ import {
   AD_CATEGORIES,
   AdInput,
   AdScript,
+  AdClip,
   AwarenessProfile,
-  KlingFrame,
-  KlingVideoJob,
   StyleRecommendation,
 } from "../lib/adgen/types";
 import {
   analyzeAwareness,
   recommendStyles,
   generateScript,
-  framedPrompt,
   awarenessMeta,
 } from "../lib/adgen/engine";
 import {
-  generateFrame,
   createVideoJob,
   pollVideo,
   hasKlingKey,
@@ -61,9 +58,8 @@ export default function AdStudio() {
   // Step 3 — script
   const [script, setScript] = useState<AdScript | null>(null);
 
-  // Step 4 — frames + video
-  const [frames, setFrames] = useState<KlingFrame[]>([]);
-  const [job, setJob] = useState<KlingVideoJob | null>(null);
+  // Step 4 — parallel clip generation (one clip per script act)
+  const [clips, setClips] = useState<AdClip[]>([]);
   const [voiceOver, setVoiceOver] = useState<VoiceOverTrack | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,59 +101,55 @@ export default function AdStudio() {
     setStep(3);
   }
 
-  async function generateVideo() {
+  /** Update a single clip in place by id. */
+  function patchClip(id: string, patch: Partial<AdClip>) {
+    setClips((cs) => cs.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  }
+
+  /** Generate + poll ONE clip to completion. */
+  async function runClip(clip: AdClip, motion: "low" | "medium" | "high", opts: { live: boolean }) {
+    try {
+      patchClip(clip.id, { status: "generating", progress: 5 });
+      let j = await createVideoJob(
+        { prompt: clip.prompt, startFrame: image, endFrame: image, durationSec: 10, motionLevel: motion },
+        opts,
+      );
+      let guard = 0;
+      while (j.status !== "succeeded" && j.status !== "failed" && guard++ < 90) {
+        j = await pollVideo(j, opts);
+        patchClip(clip.id, { progress: j.progress });
+      }
+      if (j.status === "failed") throw new Error(j.error || "Fehlgeschlagen.");
+      patchClip(clip.id, { status: "done", progress: 100, videoUrl: j.videoUrl });
+    } catch (e: any) {
+      patchClip(clip.id, { status: "error", error: e.message });
+    }
+  }
+
+  /** Kick off all 6 clips at once (one per script act) and the VO track. */
+  async function generateAllClips() {
     if (!script) return;
     setBusy(true);
     setError(null);
     const opts = { live };
+    const motion =
+      recs.find((r) => r.style.id === chosenStyle)?.style.motionLevel ?? "medium";
+
+    const initial: AdClip[] = script.scenes.map((s) => ({
+      id: s.id,
+      label: s.label,
+      startSec: s.startSec,
+      endSec: s.endSec,
+      prompt: `${s.visual}\n\nSzene: ${s.voiceOver}`,
+      status: "queued",
+      progress: 0,
+    }));
+    setClips(initial);
+    setStep(4);
+
     try {
-      // 1. Keyframes
-      let hook: KlingFrame = {
-        role: "hook",
-        prompt: framedPrompt(script, "hook", input),
-        status: "generating",
-      };
-      let cta: KlingFrame = {
-        role: "cta",
-        prompt: framedPrompt(script, "cta", input),
-        status: "generating",
-      };
-      setFrames([hook, cta]);
-      setStep(4);
-
-      hook = await generateFrame(hook, image, opts);
-      setFrames([hook, cta]);
-      cta = await generateFrame(cta, image, opts);
-      setFrames([hook, cta]);
-
-      if (hook.status === "error" || cta.status === "error") {
-        throw new Error(hook.error || cta.error || "Frame-Generierung fehlgeschlagen.");
-      }
-
-      // 2. Video
-      const motion =
-        recs.find((r) => r.style.id === chosenStyle)?.style.motionLevel ?? "medium";
-      let j = await createVideoJob(
-        {
-          prompt: script.scenes.map((s) => s.voiceOver).join(" "),
-          startFrame: hook.imageUrl,
-          endFrame: cta.imageUrl,
-          durationSec: script.durationSec,
-          motionLevel: motion,
-        },
-        opts,
-      );
-      setJob(j);
-
-      // 3. Poll
-      let guard = 0;
-      while (j.status !== "succeeded" && j.status !== "failed" && guard++ < 60) {
-        j = await pollVideo(j, opts);
-        setJob({ ...j });
-      }
-      if (j.status === "failed") throw new Error(j.error || "Video fehlgeschlagen.");
-
-      // 4. Deutsche Voice-Over-Tonspur (perfektes Hochdeutsch) synthetisieren.
+      // All clips fire in parallel — the user gets all 6 at once.
+      await Promise.all(initial.map((c) => runClip(c, motion, opts)));
       const vo = await generateGermanVoiceOver(script);
       setVoiceOver(vo);
       setStep(5);
@@ -173,8 +165,7 @@ export default function AdStudio() {
     setAwareness(null);
     setRecs([]);
     setScript(null);
-    setFrames([]);
-    setJob(null);
+    setClips([]);
     setVoiceOver(null);
     setError(null);
   }
@@ -324,65 +315,31 @@ export default function AdStudio() {
           </div>
           <div className="flex gap-2 mt-5">
             <button className="btn-ghost" onClick={() => setStep(2)}>Zurück</button>
-            <button className="btn-primary" disabled={busy} onClick={generateVideo}>
-              <Film size={16} /> Frames & Video generieren
+            <button className="btn-primary" disabled={busy} onClick={generateAllClips}>
+              <Film size={16} /> Alle 6 Clips generieren
             </button>
           </div>
         </div>
       )}
 
-      {/* STEP 4 — GENERATION PROGRESS */}
-      {step === 4 && (
+      {/* STEP 4 / 5 — PARALLEL CLIP GENERATION + RESULTS */}
+      {(step === 4 || step === 5) && (
         <div className="card p-6 mt-4 grid gap-5">
-          <h3 className="font-bold">Generierung läuft…</h3>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {frames.map((f) => (
-              <div key={f.role} className="card p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold capitalize">{f.role}-Frame</span>
-                  <FrameBadge status={f.status} />
-                </div>
-                {f.imageUrl ? (
-                  <img src={f.imageUrl} className="rounded-lg max-h-40 w-full object-cover" />
-                ) : (
-                  <div className="h-40 rounded-lg bg-panel2 animate-pulse" />
-                )}
-              </div>
+          <div className="flex items-center gap-2">
+            {step === 5 ? (
+              <span className="flex items-center gap-2 text-green-400">
+                <CheckCircle2 /> <h3 className="font-bold">Alle Clips fertig — 16:9 · MP4 · 🇩🇪 Deutsch</h3>
+              </span>
+            ) : (
+              <h3 className="font-bold">6 Clips generieren parallel…</h3>
+            )}
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {clips.map((c) => (
+              <ClipCard key={c.id} clip={c} />
             ))}
           </div>
-          {job && (
-            <div>
-              <div className="flex justify-between text-xs text-muted mb-1">
-                <span>Video-Rendering</span>
-                <span>{job.progress}%</span>
-              </div>
-              <div className="h-2 rounded-full bg-panel2 overflow-hidden">
-                <div
-                  className="h-full bg-accent transition-all"
-                  style={{ width: `${job.progress}%` }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* STEP 5 — PREVIEW / EXPORT */}
-      {step === 5 && job?.videoUrl && (
-        <div className="card p-6 mt-4 grid gap-4">
-          <div className="flex items-center gap-2 text-green-400">
-            <CheckCircle2 /> <h3 className="font-bold">Video fertig — 1080p · 16:9 · MP4 · 🇩🇪 Deutsch</h3>
-          </div>
-          {job.videoUrl.startsWith("simulated://") ? (
-            <div className="aspect-video rounded-xl bg-panel2 grid place-items-center text-muted">
-              <div className="text-center">
-                <Play size={40} className="mx-auto mb-2" />
-                Simulierte Vorschau (kein Live-Key aktiv)
-              </div>
-            </div>
-          ) : (
-            <video src={job.videoUrl} controls className="rounded-xl w-full" />
-          )}
           {voiceOver && (
             <div className="card p-4">
               <div className="flex items-center justify-between">
@@ -399,19 +356,15 @@ export default function AdStudio() {
               )}
             </div>
           )}
-          <div className="flex gap-2">
-            <a
-              className="btn-primary"
-              href={job.videoUrl.startsWith("simulated://") ? undefined : job.videoUrl}
-              download
-            >
-              Exportieren (MP4)
-            </a>
-            <button className="btn-outline" onClick={generateVideo} disabled={busy}>
-              <RefreshCw size={16} /> Variation
-            </button>
-            <button className="btn-ghost" onClick={reset}>Neu starten</button>
-          </div>
+
+          {step === 5 && (
+            <div className="flex gap-2">
+              <button className="btn-outline" onClick={generateAllClips} disabled={busy}>
+                <RefreshCw size={16} /> Neu generieren
+              </button>
+              <button className="btn-ghost" onClick={reset}>Neu starten</button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -471,15 +424,46 @@ function Info({ title, value }: { title: string; value: string }) {
   );
 }
 
-function FrameBadge({ status }: { status: KlingFrame["status"] }) {
-  const map = {
-    pending: ["Wartet", "text-muted"],
-    generating: ["Generiert…", "text-accent"],
+function ClipCard({ clip }: { clip: AdClip }) {
+  const badge = {
+    queued: ["Warteschlange", "text-muted"],
+    generating: ["Rendert…", "text-accent"],
     done: ["Fertig", "text-green-400"],
     error: ["Fehler", "text-red-400"],
   } as const;
-  const [label, cls] = map[status];
-  return <span className={`chip ${cls}`}>{label}</span>;
+  const [label, cls] = badge[clip.status];
+  const sim = clip.videoUrl?.startsWith("simulated://");
+  return (
+    <div className="card p-4 flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <span className="font-semibold text-sm text-accent">{clip.label}</span>
+        <span className={`chip ${cls}`}>{label}</span>
+      </div>
+      {clip.status === "done" && clip.videoUrl && !sim ? (
+        <video src={clip.videoUrl} controls className="rounded-lg w-full aspect-video object-cover" />
+      ) : clip.status === "done" && sim ? (
+        <div className="rounded-lg aspect-video bg-panel2 grid place-items-center text-muted text-xs">
+          <span className="text-center"><Play size={28} className="mx-auto mb-1" />Simulierte Vorschau</span>
+        </div>
+      ) : clip.status === "error" ? (
+        <div className="rounded-lg aspect-video bg-panel2 grid place-items-center text-red-400 text-[11px] p-2 text-center">
+          {clip.error}
+        </div>
+      ) : (
+        <div className="rounded-lg aspect-video bg-panel2 overflow-hidden relative animate-pulse">
+          <div
+            className="absolute bottom-0 left-0 h-1 bg-accent transition-all"
+            style={{ width: `${clip.progress}%` }}
+          />
+        </div>
+      )}
+      {clip.status === "done" && clip.videoUrl && !sim && (
+        <a className="btn-outline !py-1 justify-center" href={clip.videoUrl} download>
+          Clip herunterladen (MP4)
+        </a>
+      )}
+    </div>
+  );
 }
 
 function KeyBox({

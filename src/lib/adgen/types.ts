@@ -106,6 +106,19 @@ export interface KlingFrame {
   error?: string;
 }
 
+/** One rendered clip per script act — all 6 are generated in parallel. */
+export interface AdClip {
+  id: string;
+  label: string; // e.g. "HOOK"
+  startSec: number;
+  endSec: number;
+  prompt: string;
+  status: "queued" | "generating" | "done" | "error";
+  progress: number; // 0–100
+  videoUrl?: string;
+  error?: string;
+}
+
 export interface KlingVideoJob {
   id: string;
   status: "queued" | "processing" | "succeeded" | "failed";
