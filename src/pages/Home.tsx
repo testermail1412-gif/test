@@ -12,23 +12,26 @@ export default function Home() {
   return (
     <div>
       {/* Hero */}
-      <section className="max-w-7xl mx-auto px-4 pt-16 pb-12 text-center">
-        <div className="chip mx-auto w-fit mb-5"><span className="w-2 h-2 rounded-full bg-accent ring-live" /> 1.240+ geprüfte Inserate live</div>
-        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05]">
-          Kaufe & verkaufe<br /><span className="bg-gradient-to-r from-brand-soft to-accent bg-clip-text text-transparent">profitable Online-Businesses</span>
+      <section className="max-w-7xl mx-auto px-4 pt-20 pb-14 text-center relative">
+        <div className="chip mx-auto w-fit mb-6 glass"><span className="w-2 h-2 rounded-full bg-accent ring-live" /> 1.240+ Unternehmer & Deals live</div>
+        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.02]">
+          Das Netzwerk für<br />
+          <span className="bg-gradient-to-r from-brand-soft via-accent to-brand-soft bg-clip-text text-transparent bg-[length:200%_auto]" style={{ animation: "shimmer 6s linear infinite" }}>
+            ambitionierte Unternehmer
+          </span>
         </h1>
-        <p className="text-muted max-w-2xl mx-auto mt-5 text-lg">
-          Der sichere Marktplatz mit Trust-Score, verifizierten Anbietern, NDA-Deal-Rooms und
-          direktem Chat. Vom E-Commerce-Shop bis zum SaaS — sauber abgewickelt.
+        <p className="text-muted max-w-2xl mx-auto mt-6 text-lg">
+          Kaufe & verkaufe Unternehmen, finde Partner, Kapital und Dienstleister — branchenübergreifend.
+          Mit Trust-Score, verifizierten Profilen, NDA-Deal-Rooms und Tools für jede Branche.
         </p>
-        <div className="flex flex-wrap gap-3 justify-center mt-7">
-          <Link to="/explore" className="btn-primary"><Search size={17} /> Inserate ansehen</Link>
-          <Link to="/new" className="btn-outline">Business inserieren <ArrowRight size={16} /></Link>
+        <div className="flex flex-wrap gap-3 justify-center mt-8">
+          <Link to="/explore" className="btn-primary text-base !px-6 !py-3"><Search size={18} /> Marktplatz entdecken</Link>
+          <Link to="/new" className="btn-outline text-base !px-6 !py-3">Jetzt inserieren <ArrowRight size={17} /></Link>
         </div>
-        <div className="flex flex-wrap gap-x-8 gap-y-3 justify-center mt-9 text-sm text-muted">
-          <Trust icon={<ShieldCheck size={16} className="text-accent" />} t="Verifizierte Verkäufer" />
+        <div className="flex flex-wrap gap-x-8 gap-y-3 justify-center mt-10 text-sm text-muted">
+          <Trust icon={<ShieldCheck size={16} className="text-accent" />} t="Verifizierte Profile" />
           <Trust icon={<Gauge size={16} className="text-brand-soft" />} t="Transparenter Trust-Score" />
-          <Trust icon={<Lock size={16} className="text-brand-soft" />} t="NDA-geschützte Deal-Rooms" />
+          <Trust icon={<Lock size={16} className="text-brand-soft" />} t="NDA-Deal-Rooms" />
         </div>
       </section>
 

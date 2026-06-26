@@ -47,7 +47,7 @@ export default function App() {
       </main>
       <footer className="border-t border-line mt-16">
         <div className="max-w-7xl mx-auto px-4 py-8 text-sm text-muted flex flex-wrap gap-x-8 gap-y-2 justify-between">
-          <span>© {new Date().getFullYear()} Post Pro Shop — Marktplatz für Online-Business</span>
+          <span>© {new Date().getFullYear()} WND Connect — Das Netzwerk für Unternehmer</span>
           <span className="flex gap-5">
             <a href="#" className="hover:text-white">Impressum</a>
             <a href="#" className="hover:text-white">Datenschutz</a>

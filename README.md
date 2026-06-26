@@ -1,9 +1,8 @@
-# Post Pro Shop — Marktplatz für Online-Business
+# WND Connect — Das Netzwerk & der Marktplatz für Unternehmer
 
-Ein Nachbau & Ausbau von [post-pro-shop.lovable.app](https://post-pro-shop.lovable.app/):
-ein sicherer Marktplatz, um profitable Online-Businesses (E-Commerce, SaaS, Content,
-Apps …) zu kaufen und zu verkaufen — mit Trust-Score, verifizierten Anbietern,
-NDA-Deal-Rooms und Echtzeit-Chat.
+Ein branchenübergreifender Marktplatz, um Unternehmen zu kaufen & verkaufen, Partner,
+Kapital und Dienstleister zu finden — mit Trust-Score, verifizierten Profilen,
+NDA-Deal-Rooms, Echtzeit-Chat und Tools für jede Branche.
 
 ## Stack
 React 18 · TypeScript · Vite · Tailwind CSS · React Router · lucide-react.

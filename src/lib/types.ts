@@ -6,6 +6,17 @@ export type Category =
   | "App / Mobile"
   | "Newsletter"
   | "Marktplatz"
+  | "Gastronomie"
+  | "Handwerk / Bau"
+  | "Immobilien"
+  | "Gesundheit"
+  | "Beauty / Wellness"
+  | "Finanzen"
+  | "Bildung"
+  | "Logistik"
+  | "Produktion"
+  | "Einzelhandel"
+  | "Beratung"
   | "Sonstiges";
 
 export const CATEGORIES: Category[] = [
@@ -16,6 +27,17 @@ export const CATEGORIES: Category[] = [
   "App / Mobile",
   "Newsletter",
   "Marktplatz",
+  "Gastronomie",
+  "Handwerk / Bau",
+  "Immobilien",
+  "Gesundheit",
+  "Beauty / Wellness",
+  "Finanzen",
+  "Bildung",
+  "Logistik",
+  "Produktion",
+  "Einzelhandel",
+  "Beratung",
   "Sonstiges",
 ];
 
