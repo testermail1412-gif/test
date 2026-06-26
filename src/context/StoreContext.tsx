@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
-import { DB, User, Post, Conversation, Notification, Message, Plan, Category } from "../lib/types";
+import { DB, User, Post, Conversation, Notification, Message, Plan, Category, Offer, Review } from "../lib/types";
 import { seedDB } from "../lib/seed";
+import { sfx } from "../lib/sound";
 
 const KEY = "pps_db_v1";
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -8,7 +9,13 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 function load(): DB {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // migrations for older saved data
+      if (!parsed.offers) parsed.offers = [];
+      if (!parsed.reviews) parsed.reviews = seedDB().reviews;
+      return parsed;
+    }
   } catch {}
   const db = seedDB();
   localStorage.setItem(KEY, JSON.stringify(db));
@@ -49,6 +56,14 @@ interface Ctx {
   signNDA: (convId: string) => void;
   uploadDoc: (convId: string, name: string, size: string) => void;
   advanceStage: (convId: string, stage: NonNullable<Conversation["dealRoom"]>["stage"]) => void;
+  // offers
+  makeOffer: (postId: string, amount: number, message: string) => void;
+  offersForPost: (postId: string) => Offer[];
+  offersReceived: () => Offer[];
+  respondOffer: (offerId: string, status: "accepted" | "declined") => void;
+  // reviews
+  reviewsFor: (userId: string) => Review[];
+  addReview: (targetId: string, rating: number, text: string) => void;
   // notifications
   myNotifications: () => Notification[];
   markAllNotifsRead: () => void;
@@ -79,6 +94,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const pushToast = useCallback((t: Omit<Toast, "id">) => {
     const id = uid();
     setToasts((p) => [...p, { ...t, id }]);
+    if (t.kind === "success") sfx.success();
+    else if (t.kind === "message") sfx.receive();
+    else sfx.notify();
     setTimeout(() => setToasts((p) => p.filter((x) => x.id !== id)), 5200);
   }, []);
   const dismissToast = (id: string) => setToasts((p) => p.filter((x) => x.id !== id));
@@ -231,6 +249,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const conv = d.conversations.find((c) => c.id === convId);
     if (!conv) return;
     const msg: Message = { id: uid(), from: d.currentUserId!, text, at: Date.now(), read: false, kind, callMeta };
+    if (kind === "text") sfx.send();
     const other = conv.participants.find((p) => p !== d.currentUserId)!;
     const meName = d.users.find((u) => u.id === d.currentUserId)?.name || "Jemand";
     const notifs = [notify(other, "message", `💬 Neue Nachricht von ${meName}`, "/messages"), ...d.notifications];
@@ -312,6 +331,51 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  // ---------- offers ----------
+  const makeOffer: Ctx["makeOffer"] = (postId, amount, message) => {
+    const d = dbRef.current;
+    if (!d.currentUserId) return;
+    const post = d.posts.find((p) => p.id === postId);
+    if (!post) return;
+    const offer: Offer = { id: uid(), postId, buyerId: d.currentUserId, amount, message, status: "pending", at: Date.now() };
+    const meName = d.users.find((u) => u.id === d.currentUserId)?.name || "Jemand";
+    const ns = notify(post.ownerId, "deal", `💰 ${meName} bietet ${Math.round(amount).toLocaleString("de-DE")} € für „${post.title}".`, "/dashboard");
+    persist({ ...d, offers: [offer, ...d.offers], notifications: [ns, ...d.notifications] });
+    pushToast({ title: "Angebot gesendet", body: `${Math.round(amount).toLocaleString("de-DE")} € für ${post.title}`, kind: "success" });
+  };
+  const offersForPost = (postId: string) => db.offers.filter((o) => o.postId === postId).sort((a, b) => b.at - a.at);
+  const offersReceived = () => {
+    const mine = db.posts.filter((p) => p.ownerId === db.currentUserId).map((p) => p.id);
+    return db.offers.filter((o) => mine.includes(o.postId)).sort((a, b) => b.at - a.at);
+  };
+  const respondOffer: Ctx["respondOffer"] = (offerId, status) => {
+    const d = dbRef.current;
+    const offer = d.offers.find((o) => o.id === offerId);
+    if (!offer) return;
+    const post = d.posts.find((p) => p.id === offer.postId);
+    const ns = notify(offer.buyerId, "deal",
+      status === "accepted" ? `✅ Dein Angebot für „${post?.title}" wurde angenommen!` : `❌ Dein Angebot für „${post?.title}" wurde abgelehnt.`,
+      "/messages");
+    persist({ ...d, offers: d.offers.map((o) => (o.id === offerId ? { ...o, status } : o)), notifications: [ns, ...d.notifications] });
+    pushToast({ title: status === "accepted" ? "Angebot angenommen" : "Angebot abgelehnt", body: "", kind: status === "accepted" ? "success" : "info" });
+  };
+
+  // ---------- reviews ----------
+  const reviewsFor = (userId: string) => db.reviews.filter((r) => r.targetId === userId).sort((a, b) => b.at - a.at);
+  const addReview: Ctx["addReview"] = (targetId, rating, text) => {
+    const d = dbRef.current;
+    if (!d.currentUserId) return;
+    const review: Review = { id: uid(), targetId, authorId: d.currentUserId, rating, text, at: Date.now() };
+    const all = [review, ...d.reviews.filter((r) => r.targetId === targetId)];
+    const avg = all.reduce((s, r) => s + r.rating, 0) / all.length;
+    const ns = notify(targetId, "system", `⭐ Du hast eine neue ${rating}-Sterne-Bewertung erhalten.`, `/u/${targetId}`);
+    persist({
+      ...d, reviews: [review, ...d.reviews], notifications: [ns, ...d.notifications],
+      users: d.users.map((u) => (u.id === targetId ? { ...u, stats: { ...u.stats, rating: Math.round(avg * 10) / 10 } } : u)),
+    });
+    pushToast({ title: "Bewertung abgegeben", body: `${rating} ★`, kind: "success" });
+  };
+
   // ---------- notifications ----------
   const myNotifications = () =>
     db.notifications.filter((n) => n.userId === db.currentUserId).sort((a, b) => b.at - a.at);
@@ -322,6 +386,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const unreadNotifs = () => myNotifications().filter((n) => !n.read).length;
 
   // ---------- live desktop-style popup for new incoming messages ----------
+  // subtle UI click feedback on buttons/links
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      const el = (e.target as HTMLElement)?.closest("button, a");
+      if (el && !el.hasAttribute("data-nosound")) sfx.click();
+    };
+    document.addEventListener("click", h);
+    return () => document.removeEventListener("click", h);
+  }, []);
+
   const lastSeenRef = useRef<number>(Date.now());
   useEffect(() => {
     if (!me) return;
@@ -348,6 +422,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     createPost, toggleHot, isSaved, userById, postById, savedPostsForMe,
     canMessage, startConversation, sendMessage, conversationsForMe, markRead, unreadCount,
     signNDA, uploadDoc, advanceStage,
+    makeOffer, offersForPost, offersReceived, respondOffer,
+    reviewsFor, addReview,
     myNotifications, markAllNotifsRead, unreadNotifs,
   };
 

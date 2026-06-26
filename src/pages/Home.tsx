@@ -46,7 +46,7 @@ export default function Home() {
         <div className="flex items-center gap-2 mb-5">
           <Flame className="text-hot" /> <h2 className="text-xl font-bold">Hot gerade</h2>
         </div>
-        <div className="grid md:grid-cols-3 gap-5">
+        <div className="grid md:grid-cols-3 gap-5 stagger">
           {hot.map((p) => <PostCard key={p.id} post={p} />)}
         </div>
       </section>
@@ -68,8 +68,29 @@ export default function Home() {
           <h2 className="text-xl font-bold">Neue Inserate</h2>
           <Link to="/explore" className="text-sm text-brand-soft hover:underline">Alle ansehen →</Link>
         </div>
-        <div className="grid md:grid-cols-3 gap-5">
+        <div className="grid md:grid-cols-3 gap-5 stagger">
           {fresh.map((p) => <PostCard key={p.id} post={p} />)}
+        </div>
+      </section>
+
+      {/* Tools */}
+      <section className="max-w-7xl mx-auto px-4 mt-16">
+        <div className="grid md:grid-cols-3 gap-4">
+          <Link to="/tools" className="card p-6 lift">
+            <div className="text-2xl mb-2">🧮</div>
+            <div className="font-bold">KI-Unternehmensbewertung</div>
+            <p className="text-sm text-muted mt-1">Schätze den Marktwert deines Business in Sekunden.</p>
+          </Link>
+          <Link to="/tools" className="card p-6 lift">
+            <div className="text-2xl mb-2">📊</div>
+            <div className="font-bold">Margen- & ROI-Rechner</div>
+            <p className="text-sm text-muted mt-1">Kalkuliere Gewinnmarge und Amortisation auf einen Blick.</p>
+          </Link>
+          <Link to="/pricing" className="card p-6 lift">
+            <div className="text-2xl mb-2">🚀</div>
+            <div className="font-bold">Pro-Reichweite</div>
+            <p className="text-sm text-muted mt-1">Top-Platzierung, Analytics und Prioritäts-Verifizierung.</p>
+          </Link>
         </div>
       </section>
 

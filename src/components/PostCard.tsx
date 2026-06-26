@@ -11,7 +11,7 @@ export default function PostCard({ post }: { post: Post }) {
   const saved = isSaved(post.id);
 
   return (
-    <div className="card overflow-hidden hover:border-brand/60 transition group">
+    <div className="card overflow-hidden hover:border-brand/60 lift group">
       <Link to={`/post/${post.id}`}>
         <div className="h-28 relative" style={{ background: `linear-gradient(135deg, ${post.image}, #0a0b0f 80%)` }}>
           <div className="absolute top-3 left-3 flex gap-2">

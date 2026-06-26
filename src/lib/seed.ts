@@ -60,6 +60,12 @@ export function seedDB(): DB {
     saved: [],
     conversations: [],
     notifications: [],
+    offers: [],
+    reviews: [
+      { id: "r1", targetId: "u_max", authorId: "u_lena", rating: 5, text: "Reibungslose Übergabe, alle Zahlen exakt wie beschrieben. Top!", at: Date.now() - 1000 * 60 * 60 * 24 * 9 },
+      { id: "r2", targetId: "u_max", authorId: "u_jon", rating: 5, text: "Sehr professionell und schnell. Gerne wieder.", at: Date.now() - 1000 * 60 * 60 * 24 * 30 },
+      { id: "r3", targetId: "u_lena", authorId: "u_max", rating: 5, text: "Saubere Doku im Deal-Room, klare Kommunikation.", at: Date.now() - 1000 * 60 * 60 * 24 * 14 },
+    ],
     currentUserId: null,
   };
 }

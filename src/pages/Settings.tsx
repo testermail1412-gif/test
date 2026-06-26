@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Save } from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import { Field, Avatar } from "../components/ui";
+import { getSoundEnabled, setSoundEnabled, sfx } from "../lib/sound";
 
 export default function Settings() {
   const { me, updateMe, pushToast } = useStore();
@@ -10,6 +11,7 @@ export default function Settings() {
     email: me!.email, avatarColor: me!.avatarColor,
   });
   const [s, setS] = useState(me!.settings);
+  const [sound, setSound] = useState(getSoundEnabled());
   const set = (k: keyof typeof f) => (e: any) => setF({ ...f, [k]: e.target.value });
   const colors = ["#6d5efc", "#22d3a8", "#ff7a59", "#39a0ed", "#e74c9b", "#f5b400"];
 
@@ -51,6 +53,7 @@ export default function Settings() {
         <Toggle label="E-Mail-Benachrichtigungen" v={s.emailNotifs} on={(v) => setS({ ...s, emailNotifs: v })} />
         <Toggle label="Desktop-Popup bei neuen Nachrichten" v={s.desktopNotifs} on={(v) => setS({ ...s, desktopNotifs: v })} />
         <Toggle label="Zwei-Faktor-Authentifizierung" v={s.twoFactor} on={(v) => setS({ ...s, twoFactor: v })} />
+        <Toggle label="Sound-Effekte" v={sound} on={(v) => { setSound(v); setSoundEnabled(v); if (v) sfx.success(); }} />
       </div>
 
       <button onClick={save} className="btn-primary w-full mt-5"><Save size={16} /> Änderungen speichern</button>

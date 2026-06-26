@@ -1,13 +1,14 @@
 import { Link } from "react-router-dom";
-import { Flame, Eye, FileText, TrendingUp, Plus, ShieldCheck } from "lucide-react";
+import { Flame, Eye, FileText, TrendingUp, Plus, ShieldCheck, Check, X } from "lucide-react";
 import { useStore } from "../context/StoreContext";
 import PostCard from "../components/PostCard";
-import { TrustBadge } from "../components/ui";
-import { eur } from "../lib/format";
+import { TrustBadge, Avatar } from "../components/ui";
+import { eur, ago } from "../lib/format";
 
 export default function Dashboard() {
-  const { me, db, savedPostsForMe } = useStore();
+  const { me, db, savedPostsForMe, offersReceived, respondOffer, postById, userById } = useStore();
   if (!me) return null;
+  const offers = offersReceived();
   const myPosts = db.posts.filter((p) => p.ownerId === me.id);
   const saved = savedPostsForMe();
   const totalViews = myPosts.reduce((n, p) => n + p.views, 0);
@@ -37,6 +38,38 @@ export default function Dashboard() {
             <div className="text-xs text-muted">+20 Trust-Score und das Verify-Badge für mehr Käufer-Vertrauen.</div></div>
           <span className="btn-outline text-xs">Los geht's →</span>
         </Link>
+      )}
+
+      {offers.length > 0 && (
+        <div className="mb-8">
+          <h2 className="font-bold mb-3 flex items-center gap-2">💰 Eingegangene Angebote</h2>
+          <div className="space-y-3">
+            {offers.map((o) => {
+              const post = postById(o.postId);
+              const buyer = userById(o.buyerId);
+              return (
+                <div key={o.id} className="card p-4 flex items-center gap-3 flex-wrap">
+                  {buyer && <Avatar name={buyer.name} color={buyer.avatarColor} size={36} />}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm"><b>{buyer?.name}</b> bietet <b className="text-accent">{eur(o.amount)}</b> für „{post?.title}"</div>
+                    {o.message && <div className="text-xs text-muted truncate">{o.message}</div>}
+                    <div className="text-[11px] text-muted">{ago(o.at)} · Listenpreis {post ? eur(post.price) : "—"}</div>
+                  </div>
+                  {o.status === "pending" ? (
+                    <div className="flex gap-2">
+                      <button onClick={() => respondOffer(o.id, "accepted")} className="btn-primary !py-2 text-xs"><Check size={14} /> Annehmen</button>
+                      <button onClick={() => respondOffer(o.id, "declined")} className="btn-ghost !py-2 text-xs"><X size={14} /> Ablehnen</button>
+                    </div>
+                  ) : (
+                    <span className={`chip text-xs ${o.status === "accepted" ? "text-accent border-accent/40 bg-accent/10" : "text-hot border-hot/40 bg-hot/10"}`}>
+                      {o.status === "accepted" ? "Angenommen" : "Abgelehnt"}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       <div className="grid lg:grid-cols-2 gap-8">
