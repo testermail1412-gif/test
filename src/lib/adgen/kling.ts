@@ -16,9 +16,11 @@ const KEY_STORAGE = "adgen.kling.key.v1";
 // server-side proxy (recommended for production so the key never hits the
 // browser, and to avoid CORS). The trailing path segments below match Kling's
 // REST surface.
+// Default to the Vite dev proxy (/api/kling → https://api.klingai.com) so the
+// browser never calls Kling directly and CORS can't break it. Override with
+// VITE_KLING_ENDPOINT to point at a production backend proxy.
 const KLING_ENDPOINT =
-  (import.meta as any).env?.VITE_KLING_ENDPOINT ||
-  "https://api.klingai.com";
+  (import.meta as any).env?.VITE_KLING_ENDPOINT || "/api/kling";
 
 // Light obfuscation only — this is not real encryption. The correct place to
 // keep the key secret is a server-side proxy; we avoid plaintext-at-rest here.
