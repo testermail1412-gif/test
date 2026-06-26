@@ -12,8 +12,13 @@ import { KlingFrame, KlingVideoJob } from "./types";
  */
 
 const KEY_STORAGE = "adgen.kling.key.v1";
+// Live calls go to the real Kling API by default. Set VITE_KLING_ENDPOINT to a
+// server-side proxy (recommended for production so the key never hits the
+// browser, and to avoid CORS). The trailing path segments below match Kling's
+// REST surface.
 const KLING_ENDPOINT =
-  (import.meta as any).env?.VITE_KLING_ENDPOINT || "/api/kling";
+  (import.meta as any).env?.VITE_KLING_ENDPOINT ||
+  "https://api.klingai.com";
 
 // Light obfuscation only — this is not real encryption. The correct place to
 // keep the key secret is a server-side proxy; we avoid plaintext-at-rest here.
@@ -141,13 +146,17 @@ export async function createVideoJob(
     return { id: `sim-${Date.now()}`, status: "queued", progress: 0 };
   }
   const data = await klingFetch("/v1/videos/generations", {
-    prompt: params.prompt,
+    // All on-screen text and captions must render in flawless German.
+    prompt: `${params.prompt}\n\nWICHTIG: Sämtliche eingeblendeten Texte, Untertitel und Captions in fehlerfreiem Hochdeutsch.`,
+    negative_prompt:
+      "englische Texte, Rechtschreibfehler, verzerrte Schrift, fremdsprachige Untertitel",
     image: params.startFrame,
     image_tail: params.endFrame,
     duration: params.durationSec,
     cfg_scale: params.motionLevel === "high" ? 0.8 : 0.5,
     aspect_ratio: "16:9",
     mode: "professional",
+    language: "de",
   });
   return { id: data.id, status: "processing", progress: 5 };
 }

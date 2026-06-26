@@ -35,6 +35,11 @@ import {
   hasKlingKey,
   saveKlingKey,
 } from "../lib/adgen/kling";
+import {
+  generateGermanVoiceOver,
+  previewGermanVoiceOver,
+  VoiceOverTrack,
+} from "../lib/adgen/voiceover";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -59,6 +64,7 @@ export default function AdStudio() {
   // Step 4 — frames + video
   const [frames, setFrames] = useState<KlingFrame[]>([]);
   const [job, setJob] = useState<KlingVideoJob | null>(null);
+  const [voiceOver, setVoiceOver] = useState<VoiceOverTrack | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -150,6 +156,10 @@ export default function AdStudio() {
         setJob({ ...j });
       }
       if (j.status === "failed") throw new Error(j.error || "Video fehlgeschlagen.");
+
+      // 4. Deutsche Voice-Over-Tonspur (perfektes Hochdeutsch) synthetisieren.
+      const vo = await generateGermanVoiceOver(script);
+      setVoiceOver(vo);
       setStep(5);
     } catch (e: any) {
       setError(e.message);
@@ -165,6 +175,7 @@ export default function AdStudio() {
     setScript(null);
     setFrames([]);
     setJob(null);
+    setVoiceOver(null);
     setError(null);
   }
 
@@ -360,7 +371,7 @@ export default function AdStudio() {
       {step === 5 && job?.videoUrl && (
         <div className="card p-6 mt-4 grid gap-4">
           <div className="flex items-center gap-2 text-green-400">
-            <CheckCircle2 /> <h3 className="font-bold">Video fertig — 1080p · 16:9 · MP4</h3>
+            <CheckCircle2 /> <h3 className="font-bold">Video fertig — 1080p · 16:9 · MP4 · 🇩🇪 Deutsch</h3>
           </div>
           {job.videoUrl.startsWith("simulated://") ? (
             <div className="aspect-video rounded-xl bg-panel2 grid place-items-center text-muted">
@@ -371,6 +382,22 @@ export default function AdStudio() {
             </div>
           ) : (
             <video src={job.videoUrl} controls className="rounded-xl w-full" />
+          )}
+          {voiceOver && (
+            <div className="card p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm">Deutsche Voice-Over-Tonspur</span>
+                <button
+                  className="btn-outline !py-1"
+                  onClick={() => previewGermanVoiceOver(voiceOver)}
+                >
+                  <Play size={14} /> Hochdeutsch anhören
+                </button>
+              </div>
+              {voiceOver.audioUrl && (
+                <audio src={voiceOver.audioUrl} controls className="w-full mt-3" />
+              )}
+            </div>
           )}
           <div className="flex gap-2">
             <a
