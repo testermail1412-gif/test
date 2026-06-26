@@ -190,21 +190,23 @@ export async function createVideoJob(
     return { id: `sim-${Date.now()}`, status: "queued", progress: 0 };
   }
   // Kling caps a single image-to-video clip at 5 or 10 seconds — there is no
-  // 90s single-shot render. We request the longest clip (10s); the full
-  // 60–90s ad is assembled by stitching multiple clips (see notes in README).
-  const data = await klingFetch("/v1/videos/image2video", {
+  // 90s single-shot render. We request the longest clip (10s).
+  // NOTE: image_tail (end frame) is only supported in specific model/mode/
+  // duration combos, so it is only sent when explicitly provided.
+  const body: Record<string, unknown> = {
     model_name: "kling-v1-5",
     mode: params.motionLevel === "low" ? "std" : "pro",
     duration: "10",
     image: stripDataUrlPrefix(params.startFrame),
-    image_tail: stripDataUrlPrefix(params.endFrame),
     // German captions enforced via prompt + negative_prompt (Kling has no
     // dedicated language field).
     prompt: `${params.prompt}\n\nWICHTIG: Alle eingeblendeten Texte/Untertitel in fehlerfreiem Hochdeutsch.`,
     negative_prompt:
       "englische Texte, Rechtschreibfehler, verzerrte Schrift, fremdsprachige Untertitel",
     cfg_scale: params.motionLevel === "high" ? 0.8 : 0.5,
-  });
+  };
+  if (params.endFrame) body.image_tail = stripDataUrlPrefix(params.endFrame);
+  const data = await klingFetch("/v1/videos/image2video", body);
   return { id: data.task_id, status: "processing", progress: 5 };
 }
 

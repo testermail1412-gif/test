@@ -111,7 +111,7 @@ export default function AdStudio() {
     try {
       patchClip(clip.id, { status: "generating", progress: 5 });
       let j = await createVideoJob(
-        { prompt: clip.prompt, startFrame: image, endFrame: image, durationSec: 10, motionLevel: motion },
+        { prompt: clip.prompt, startFrame: image, durationSec: 10, motionLevel: motion },
         opts,
       );
       let guard = 0;
