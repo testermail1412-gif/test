@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import Messages from "./pages/Messages";
 import Dashboard from "./pages/Dashboard";
 import Tools from "./pages/Tools";
+import AdStudio from "./pages/AdStudio";
 import Auth from "./pages/Auth";
 
 function Guard({ children }: { children: JSX.Element }) {
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/u/:id" element={<Profile />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/tools" element={<Tools />} />
+          <Route path="/ad-studio" element={<AdStudio />} />
           <Route path="/login" element={<Auth mode="login" />} />
           <Route path="/signup" element={<Auth mode="signup" />} />
           <Route path="/new" element={<Guard><NewPost /></Guard>} />

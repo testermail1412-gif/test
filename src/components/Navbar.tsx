@@ -27,6 +27,7 @@ export default function Navbar() {
           <Search size={16} /> Inserate
         </Link>
         <Link to="/tools" className="hidden md:block text-sm text-muted hover:text-white">Tools</Link>
+        <Link to="/ad-studio" className="hidden md:block text-sm text-muted hover:text-white">Ad Studio</Link>
         <Link to="/pricing" className="hidden md:block text-sm text-muted hover:text-white">Preise</Link>
 
         <div className="ml-auto flex items-center gap-2">
