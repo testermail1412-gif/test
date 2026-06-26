@@ -85,22 +85,53 @@ interface KlingClientOpts {
   signal?: AbortSignal;
 }
 
-async function klingFetch(path: string, body: unknown): Promise<any> {
+async function klingFetch(
+  path: string,
+  body?: unknown,
+  method: "GET" | "POST" = "POST",
+): Promise<any> {
   const key = getKlingKey();
   if (!key) throw new Error("Kein Kling API-Key konfiguriert.");
   consumeQuota();
   const res = await fetch(`${KLING_ENDPOINT}${path}`, {
-    method: "POST",
+    method,
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${key}`,
     },
-    body: JSON.stringify(body),
+    body: method === "POST" ? JSON.stringify(body ?? {}) : undefined,
   });
-  if (!res.ok) {
-    throw new Error(`Kling API ${res.status}: ${await res.text()}`);
+  const json = await res.json().catch(() => ({}));
+  // Kling wraps everything in {code, message, data}. code 0 == success.
+  if (!res.ok || (json.code !== undefined && json.code !== 0)) {
+    throw new Error(`Kling API ${res.status}: ${json.message || JSON.stringify(json)}`);
   }
-  return res.json();
+  return json.data ?? json;
+}
+
+/** Poll a Kling task until it succeeds or fails. */
+async function awaitTask(
+  basePath: string,
+  taskId: string,
+  pick: (result: any) => string | undefined,
+  opts: KlingClientOpts,
+  onProgress?: (pct: number) => void,
+): Promise<string> {
+  for (let i = 0; i < 60; i++) {
+    await delay(3000, opts.signal);
+    const data = await klingFetch(`${basePath}/${taskId}`, undefined, "GET");
+    const status = data.task_status; // submitted | processing | succeed | failed
+    onProgress?.(Math.min(95, 10 + i * 5));
+    if (status === "succeed") {
+      const url = pick(data.task_result);
+      if (!url) throw new Error("Kling-Task erfolgreich, aber keine URL geliefert.");
+      return url;
+    }
+    if (status === "failed") {
+      throw new Error(data.task_status_msg || "Kling-Task fehlgeschlagen.");
+    }
+  }
+  throw new Error("Kling-Task Timeout.");
 }
 
 /**
@@ -118,13 +149,24 @@ export async function generateFrame(
     return { ...frame, status: "done", imageUrl: productImage };
   }
   try {
-    const data = await klingFetch("/v1/images/generations", {
+    // Kling rejects a "resolution" field (code 1201); size is controlled via
+    // aspect_ratio. The product image is the reference; base64 must be sent
+    // WITHOUT the "data:image/...;base64," prefix.
+    const submit = await klingFetch("/v1/images/generations", {
+      model_name: "kling-v1-5",
       prompt: frame.prompt,
-      image: productImage,
+      image: stripDataUrlPrefix(productImage),
+      image_reference: "subject",
       aspect_ratio: "16:9",
-      resolution: "1080p",
+      n: 1,
     });
-    return { ...frame, status: "done", imageUrl: data.image_url };
+    const url = await awaitTask(
+      "/v1/images/generations",
+      submit.task_id,
+      (r) => r?.images?.[0]?.url,
+      opts,
+    );
+    return { ...frame, status: "done", imageUrl: url };
   } catch (e: any) {
     return { ...frame, status: "error", error: e.message };
   }
@@ -147,20 +189,23 @@ export async function createVideoJob(
   if (!opts.live) {
     return { id: `sim-${Date.now()}`, status: "queued", progress: 0 };
   }
-  const data = await klingFetch("/v1/videos/generations", {
-    // All on-screen text and captions must render in flawless German.
-    prompt: `${params.prompt}\n\nWICHTIG: Sämtliche eingeblendeten Texte, Untertitel und Captions in fehlerfreiem Hochdeutsch.`,
+  // Kling caps a single image-to-video clip at 5 or 10 seconds — there is no
+  // 90s single-shot render. We request the longest clip (10s); the full
+  // 60–90s ad is assembled by stitching multiple clips (see notes in README).
+  const data = await klingFetch("/v1/videos/image2video", {
+    model_name: "kling-v1-5",
+    mode: params.motionLevel === "low" ? "std" : "pro",
+    duration: "10",
+    image: stripDataUrlPrefix(params.startFrame),
+    image_tail: stripDataUrlPrefix(params.endFrame),
+    // German captions enforced via prompt + negative_prompt (Kling has no
+    // dedicated language field).
+    prompt: `${params.prompt}\n\nWICHTIG: Alle eingeblendeten Texte/Untertitel in fehlerfreiem Hochdeutsch.`,
     negative_prompt:
       "englische Texte, Rechtschreibfehler, verzerrte Schrift, fremdsprachige Untertitel",
-    image: params.startFrame,
-    image_tail: params.endFrame,
-    duration: params.durationSec,
     cfg_scale: params.motionLevel === "high" ? 0.8 : 0.5,
-    aspect_ratio: "16:9",
-    mode: "professional",
-    language: "de",
   });
-  return { id: data.id, status: "processing", progress: 5 };
+  return { id: data.task_id, status: "processing", progress: 5 };
 }
 
 export async function pollVideo(
@@ -174,14 +219,36 @@ export async function pollVideo(
       ? { ...job, status: "succeeded", progress: 100, videoUrl: "simulated://preview.mp4" }
       : { ...job, status: "processing", progress };
   }
-  const data = await klingFetch(`/v1/videos/${job.id}`, {});
-  return {
-    ...job,
-    status: data.status,
-    progress: data.progress ?? job.progress,
-    videoUrl: data.video_url,
-    error: data.error,
-  };
+  try {
+    await delay(4000, opts.signal);
+    const data = await klingFetch(
+      `/v1/videos/image2video/${job.id}`,
+      undefined,
+      "GET",
+    );
+    const status = data.task_status;
+    if (status === "succeed") {
+      return {
+        ...job,
+        status: "succeeded",
+        progress: 100,
+        videoUrl: data.task_result?.videos?.[0]?.url,
+      };
+    }
+    if (status === "failed") {
+      return { ...job, status: "failed", error: data.task_status_msg || "Fehlgeschlagen." };
+    }
+    return { ...job, status: "processing", progress: Math.min(95, job.progress + 8) };
+  } catch (e: any) {
+    return { ...job, status: "failed", error: e.message };
+  }
+}
+
+/** Kling expects raw base64 — strip any "data:image/...;base64," prefix. */
+function stripDataUrlPrefix(s?: string): string | undefined {
+  if (!s) return s;
+  const i = s.indexOf("base64,");
+  return i >= 0 ? s.slice(i + 7) : s;
 }
 
 function delay(ms: number, signal?: AbortSignal): Promise<void> {
