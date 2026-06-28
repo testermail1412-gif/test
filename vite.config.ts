@@ -15,11 +15,12 @@ export default defineConfig({
     // to the real Kling API. In production, point VITE_KLING_ENDPOINT at an
     // equivalent backend proxy instead.
     proxy: {
-      "/api/kling": {
-        target: "https://api.klingai.com",
+      // Veo 3 via the Gemini API. Browser → proxy → Google (avoids CORS).
+      "/api/gemini": {
+        target: "https://generativelanguage.googleapis.com",
         changeOrigin: true,
         secure: true,
-        rewrite: (p) => p.replace(/^\/api\/kling/, ""),
+        rewrite: (p) => p.replace(/^\/api\/gemini/, ""),
       },
     },
   },

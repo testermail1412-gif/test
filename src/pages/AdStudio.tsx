@@ -29,9 +29,9 @@ import {
 import {
   createVideoJob,
   pollVideo,
-  hasKlingKey,
-  saveKlingKey,
-} from "../lib/adgen/kling";
+  hasVeoKey,
+  saveVeoKey,
+} from "../lib/adgen/veo";
 import {
   generateGermanVoiceOver,
   previewGermanVoiceOver,
@@ -66,7 +66,7 @@ export default function AdStudio() {
 
   // Key
   const [keyInput, setKeyInput] = useState("");
-  const [live, setLive] = useState(hasKlingKey());
+  const [live, setLive] = useState(hasVeoKey());
 
   const input: AdInput = useMemo(
     () => ({ productImage: image, brandCopy, audience, category }),
@@ -178,7 +178,7 @@ export default function AdStudio() {
       </header>
       <p className="text-muted text-sm mb-6">
         Produktbild + Brand Copy → Trend- & Awareness-Analyse → Script →
-        Kling-Frames → fertiges Video.
+        Veo-3-Clips → fertige Videos.
       </p>
 
       <Stepper step={step} />
@@ -239,11 +239,11 @@ export default function AdStudio() {
             keyInput={keyInput}
             setKeyInput={setKeyInput}
             onSave={() => {
-              saveKlingKey(keyInput);
+              saveVeoKey(keyInput);
               setLive(true);
               setKeyInput("");
             }}
-            onToggle={() => setLive((v) => !v && hasKlingKey())}
+            onToggle={() => setLive((v) => !v && hasVeoKey())}
           />
           <button className="btn-primary justify-self-start" onClick={runAnalysis}>
             <Wand2 size={16} /> Awareness analysieren
@@ -481,7 +481,7 @@ function KeyBox({
   return (
     <div className="card p-4 border-line">
       <div className="flex items-center gap-2 mb-2 text-sm font-semibold">
-        <KeyRound size={15} /> Kling API-Key
+        <KeyRound size={15} /> Google Veo (Gemini) API-Key
         <span className={`chip ${live ? "text-green-400" : "text-muted"}`}>
           {live ? "Live-Modus" : "Simulation"}
         </span>
