@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { MapPin, Globe, Calendar, MessageSquare, Star, Briefcase, Clock, ShieldCheck } from "lucide-react";
 import { useStore } from "../context/StoreContext";
@@ -8,12 +9,15 @@ import { ago } from "../lib/format";
 export default function Profile() {
   const { id } = useParams();
   const nav = useNavigate();
-  const { userById, db, me, canMessage, startConversation } = useStore();
+  const { userById, db, me, canMessage, startConversation, reviewsFor, addReview } = useStore();
   const user = id ? userById(id) : undefined;
+  const [rating, setRating] = useState(5);
+  const [reviewText, setReviewText] = useState("");
   if (!user) return <div className="max-w-3xl mx-auto p-12 text-center text-muted">Profil nicht gefunden.</div>;
 
   const posts = db.posts.filter((p) => p.ownerId === user.id);
   const isMe = me?.id === user.id;
+  const reviews = reviewsFor(user.id);
 
   const message = () => {
     if (!me) return nav("/login");
@@ -74,6 +78,47 @@ export default function Profile() {
           {!user.verified && <span className="btn-outline text-xs">Verifizieren →</span>}
         </Link>
       )}
+
+      {/* Reviews */}
+      <div className="mt-8">
+        <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><Star size={18} className="text-yellow-400" /> Bewertungen ({reviews.length})</h2>
+        {!isMe && me && (
+          <div className="card p-4 mb-4">
+            <div className="flex items-center gap-1 mb-2">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} onClick={() => setRating(n)}>
+                  <Star size={20} className={n <= rating ? "fill-yellow-400 text-yellow-400" : "text-line"} />
+                </button>
+              ))}
+            </div>
+            <textarea className="input" rows={2} value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder={`Bewerte deine Erfahrung mit ${user.name.split(" ")[0]}…`} />
+            <button onClick={() => { if (reviewText.trim()) { addReview(user.id, rating, reviewText.trim()); setReviewText(""); } }}
+              className="btn-primary mt-3 text-sm">Bewertung abgeben</button>
+          </div>
+        )}
+        {reviews.length === 0 ? (
+          <div className="card p-6 text-center text-muted text-sm">Noch keine Bewertungen.</div>
+        ) : (
+          <div className="space-y-3">
+            {reviews.map((rv) => {
+              const author = userById(rv.authorId);
+              return (
+                <div key={rv.id} className="card p-4 flex gap-3">
+                  {author && <Avatar name={author.name} color={author.avatarColor} size={36} />}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold">{author?.name}</span>
+                      <span className="flex">{Array.from({ length: rv.rating }).map((_, i) => <Star key={i} size={12} className="fill-yellow-400 text-yellow-400" />)}</span>
+                      <span className="text-[11px] text-muted ml-auto">{ago(rv.at)}</span>
+                    </div>
+                    <p className="text-sm text-muted mt-1">{rv.text}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       <h2 className="text-lg font-bold mt-8 mb-4">Inserate von {user.name.split(" ")[0]} ({posts.length})</h2>
       {posts.length === 0 ? (

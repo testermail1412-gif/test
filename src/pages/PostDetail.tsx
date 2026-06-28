@@ -8,10 +8,13 @@ import { eur, ago } from "../lib/format";
 export default function PostDetail() {
   const { id } = useParams();
   const nav = useNavigate();
-  const { postById, userById, me, isSaved, toggleHot, startConversation, sendMessage, canMessage } = useStore();
+  const { postById, userById, me, isSaved, toggleHot, startConversation, sendMessage, canMessage, makeOffer } = useStore();
   const post = id ? postById(id) : undefined;
   const [exposeOpen, setExposeOpen] = useState(false);
   const [exposeMsg, setExposeMsg] = useState("");
+  const [offerOpen, setOfferOpen] = useState(false);
+  const [offerAmount, setOfferAmount] = useState("");
+  const [offerMsg, setOfferMsg] = useState("");
 
   if (!post) return <div className="max-w-3xl mx-auto p-12 text-center text-muted">Inserat nicht gefunden.</div>;
   const owner = userById(post.ownerId)!;
@@ -94,6 +97,7 @@ export default function PostDetail() {
             ) : (
               <div className="mt-4 space-y-2.5">
                 <button onClick={() => setExposeOpen(true)} className="btn-primary w-full"><FileText size={16} /> Exposé anfordern</button>
+                <button onClick={() => me ? setOfferOpen(true) : nav("/login")} className="btn-outline w-full">💰 Angebot machen</button>
                 <button onClick={() => contact()} className="btn-outline w-full"><MessageSquare size={16} /> Nachricht senden</button>
                 <button onClick={() => me ? toggleHot(post.id) : nav("/login")}
                   className={`btn-ghost w-full ${saved ? "text-hot" : ""}`}>
@@ -118,6 +122,23 @@ export default function PostDetail() {
             placeholder="Stelle dich kurz vor und sag, warum du Interesse hast…" />
         </Field>
         <button onClick={requestExpose} className="btn-primary w-full mt-4">Exposé-Anfrage senden</button>
+      </Modal>
+
+      <Modal open={offerOpen} onClose={() => setOfferOpen(false)} title="Angebot abgeben">
+        <p className="text-sm text-muted mb-4">
+          Listenpreis: <b className="text-white">{eur(post.price)}</b>. Gib dein verbindliches Kaufangebot ab — der
+          Verkäufer kann annehmen oder ablehnen.
+        </p>
+        <Field label="Dein Angebot (€)">
+          <input className="input" type="number" value={offerAmount} onChange={(e) => setOfferAmount(e.target.value)} placeholder={String(post.price)} />
+        </Field>
+        <div className="mt-3">
+          <Field label="Nachricht (optional)">
+            <textarea className="input" rows={2} value={offerMsg} onChange={(e) => setOfferMsg(e.target.value)} placeholder="Begründe dein Angebot…" />
+          </Field>
+        </div>
+        <button onClick={() => { if (+offerAmount > 0) { makeOffer(post.id, +offerAmount, offerMsg); setOfferOpen(false); setOfferAmount(""); setOfferMsg(""); } }}
+          className="btn-primary w-full mt-4">Angebot senden</button>
       </Modal>
     </div>
   );

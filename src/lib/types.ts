@@ -6,6 +6,17 @@ export type Category =
   | "App / Mobile"
   | "Newsletter"
   | "Marktplatz"
+  | "Gastronomie"
+  | "Handwerk / Bau"
+  | "Immobilien"
+  | "Gesundheit"
+  | "Beauty / Wellness"
+  | "Finanzen"
+  | "Bildung"
+  | "Logistik"
+  | "Produktion"
+  | "Einzelhandel"
+  | "Beratung"
   | "Sonstiges";
 
 export const CATEGORIES: Category[] = [
@@ -16,6 +27,17 @@ export const CATEGORIES: Category[] = [
   "App / Mobile",
   "Newsletter",
   "Marktplatz",
+  "Gastronomie",
+  "Handwerk / Bau",
+  "Immobilien",
+  "Gesundheit",
+  "Beauty / Wellness",
+  "Finanzen",
+  "Bildung",
+  "Logistik",
+  "Produktion",
+  "Einzelhandel",
+  "Beratung",
   "Sonstiges",
 ];
 
@@ -103,11 +125,32 @@ export interface Notification {
   link?: string;
 }
 
+export interface Offer {
+  id: string;
+  postId: string;
+  buyerId: string;
+  amount: number;
+  message: string;
+  status: "pending" | "accepted" | "declined";
+  at: number;
+}
+
+export interface Review {
+  id: string;
+  targetId: string; // reviewed user
+  authorId: string;
+  rating: number; // 1-5
+  text: string;
+  at: number;
+}
+
 export interface DB {
   users: User[];
   posts: Post[];
   saved: SavedPost[];
   conversations: Conversation[];
   notifications: Notification[];
+  offers: Offer[];
+  reviews: Review[];
   currentUserId: string | null;
 }

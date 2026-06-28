@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useStore } from "./context/StoreContext";
 import Navbar from "./components/Navbar";
 import Toasts from "./components/Toasts";
@@ -12,6 +12,8 @@ import Verify from "./pages/Verify";
 import Settings from "./pages/Settings";
 import Messages from "./pages/Messages";
 import Dashboard from "./pages/Dashboard";
+import Tools from "./pages/Tools";
+import AdStudio from "./pages/AdStudio";
 import Auth from "./pages/Auth";
 
 function Guard({ children }: { children: JSX.Element }) {
@@ -23,13 +25,16 @@ export default function App() {
   return (
     <div className="min-h-full flex flex-col">
       <Navbar />
-      <main className="flex-1">
+      <main className="flex-1" key={useLocation().pathname.split("/")[1]}>
+        <div className="animate-fade-up">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/explore" element={<Explore />} />
           <Route path="/post/:id" element={<PostDetail />} />
           <Route path="/u/:id" element={<Profile />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/tools" element={<Tools />} />
+          <Route path="/ad-studio" element={<AdStudio />} />
           <Route path="/login" element={<Auth mode="login" />} />
           <Route path="/signup" element={<Auth mode="signup" />} />
           <Route path="/new" element={<Guard><NewPost /></Guard>} />
@@ -40,10 +45,11 @@ export default function App() {
           <Route path="/dashboard" element={<Guard><Dashboard /></Guard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </div>
       </main>
       <footer className="border-t border-line mt-16">
         <div className="max-w-7xl mx-auto px-4 py-8 text-sm text-muted flex flex-wrap gap-x-8 gap-y-2 justify-between">
-          <span>© {new Date().getFullYear()} Post Pro Shop — Marktplatz für Online-Business</span>
+          <span>© {new Date().getFullYear()} WND Connect — Das Netzwerk für Unternehmer</span>
           <span className="flex gap-5">
             <a href="#" className="hover:text-white">Impressum</a>
             <a href="#" className="hover:text-white">Datenschutz</a>

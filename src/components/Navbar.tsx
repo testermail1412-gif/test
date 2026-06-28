@@ -16,14 +16,18 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/80 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
-        <Link to="/" className="flex items-center gap-2 font-extrabold text-lg">
-          <span className="grid place-items-center w-8 h-8 rounded-lg bg-brand shadow-glow"><Zap size={17} /></span>
-          Post<span className="text-brand-soft">Pro</span>Shop
+        <Link to="/" className="flex items-center gap-2.5 font-display font-extrabold text-lg">
+          <span className="grid place-items-center w-9 h-9 rounded-xl bg-gradient-to-br from-brand to-accent shadow-glow">
+            <Zap size={18} className="text-white" />
+          </span>
+          <span>WND<span className="bg-gradient-to-r from-brand-soft to-accent bg-clip-text text-transparent"> Connect</span></span>
         </Link>
 
         <Link to="/explore" className="hidden md:flex items-center gap-2 text-sm text-muted hover:text-white ml-2">
           <Search size={16} /> Inserate
         </Link>
+        <Link to="/tools" className="hidden md:block text-sm text-muted hover:text-white">Tools</Link>
+        <Link to="/ad-studio" className="hidden md:block text-sm text-muted hover:text-white">Ad Studio</Link>
         <Link to="/pricing" className="hidden md:block text-sm text-muted hover:text-white">Preise</Link>
 
         <div className="ml-auto flex items-center gap-2">
